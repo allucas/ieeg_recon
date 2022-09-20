@@ -40,7 +40,7 @@ subject = args.subject
 
 source_dir = args.source_directory
 
-out_file = os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'clinical_module')
+out_file = os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'module2')
 
 # Define the SelectFiles
 templates= {'postimplant_ct': '{subject}/{session}/ct/{subject}_{session}_acq-3D_space-T01ct_ct.nii.gz',

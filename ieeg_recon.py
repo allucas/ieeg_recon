@@ -25,7 +25,7 @@ parser.add_argument("-an", "--atlas_name")
 parser.add_argument("-ri", "--roi_indices", help="ROI Indices")
 parser.add_argument("-rl", "--roi_labels", help="ROI Labels")
 parser.add_argument("-r","--radius", help="Radius for Electrode atlast Assignment")
-parser.add_argument("-cd", "--clinical_module_dir",help="Source iEEG Recon Directory")
+parser.add_argument("-ird", "--ieeg_recon_dir", help="Source iEEG Recon Directory")
 
 args = parser.parse_args()
 
@@ -36,19 +36,19 @@ print('Reference Session: ', args.reference_session)
 if args.module == str(-1):
     print('Running Modules 2 and 3 ... \n \n \n \n ')
 
-    clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon','clinical_module')
+    clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
     subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
-    subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -cd "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+" -ri "+args.roi_indices+" -rl "+args.roi_labels+" -r "+args.radius , shell=True)
+    subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+" -ri "+args.roi_indices+" -rl "+args.roi_labels+" -r "+args.radius , shell=True)
 
 
 if args.module == str(3):
     print('Running Module 3 ...')
-    if args.clinical_module_dir == None:
-        clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon','clinical_module')
+    if args.ieeg_recon_dir == None:
+        clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
     else:
-        clinical_module_dir=args.clinical_module_dir
+        clinical_module_dir=args.ieeg_recon_dir
 
-    subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -cd "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+" -ri "+args.roi_indices+" -rl "+args.roi_labels+" -r "+args.radius , shell=True)
+    subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+" -ri "+args.roi_indices+" -rl "+args.roi_labels+" -r "+args.radius , shell=True)
 
 if args.module == str(2):
     print('Running Module 2 ...')

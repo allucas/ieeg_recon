@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser()
 #-db DATABSE -u USERNAME -p PASSWORD -size 20
 parser.add_argument("-s", "--subject", help="Subject ID")
 parser.add_argument("-rs","--reference_session")
-parser.add_argument("-cd", "--clinical_module_dir", help="Source iEEG Recon Directory")
+parser.add_argument("-ird", "--ieeg_recon_dir", help="Source iEEG Recon Directory")
 parser.add_argument("-a", "--atlas_path", help="Atlas Path")
 parser.add_argument("-an", "--atlas_name", help="Atlas Name")
 parser.add_argument("-ri", "--roi_indices", help="ROI Indices")
@@ -45,7 +45,7 @@ atlas = nib.load(args.atlas_path)
 roi_indices = np.loadtxt(args.roi_indices, dtype=int)
 roi_labels = np.loadtxt(args.roi_labels, dtype=object)
 atlas_name = args.atlas_name
-clinical_module_dir = args.clinical_module_dir
+clinical_module_dir = os.path.join(args.ieeg_recon_dir,'module2')
 reference_session = args.reference_session
 
 try:
@@ -115,7 +115,7 @@ for i in range(len(coords)):
     electrode_assignment_index.append(index)
     electrode_assignment_label.append(label)
 
-atlas_module_dir = os.path.join(clinical_module_dir,'..','atlas_module')
+atlas_module_dir = os.path.join(clinical_module_dir,'..','module3')
 
 if os.path.exists(atlas_module_dir) == False:
     os.mkdir(atlas_module_dir)
