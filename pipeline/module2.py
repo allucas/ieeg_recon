@@ -385,9 +385,9 @@ threshold_ct = MapNode(name='threshold_ct',
 
 
 plot_ct_coords = MapNode(name='plot_ct_coords',
-                interface=Function(input_names=['in_ct','coords_path'],
+                interface=Function(input_names=['in_mri','coords_path'],
                                     output_names=['out_file'],
-                                    function=get_seg_vox_coords), iterfield='in_ct')
+                                    function=get_seg_vox_coords_mri), iterfield=['in_mri','coords_path'])
 
 transform_coords_to_ras = MapNode(name='transform_coords_to_ras',
                 interface=Function(input_names=['in_mat','coords_path'],
@@ -445,11 +445,6 @@ module1.connect([
         (reorient_mri, datasink, [('out_file','MRI_RAS')]),
         (reorient_ct, datasink, [('out_file','CT_RAS')]),
 
-        # Plot the coordinates in the CT space as spheres
-        (reorient_ct, plot_ct_coords, [('out_file', 'in_ct')]),
-        (sf, plot_ct_coords, [('voxtool_coords', 'coords_path')]),
-        (plot_ct_coords, datasink, [('out_file', 'electrode_spheres_ct')]),
-
         # Threshold the CT for better registration and visualization
         (reorient_ct, threshold_ct, [('out_file', 'in_ct')]),
         (threshold_ct, datasink, [('out_file', 'ct_thresholded')]),
@@ -482,6 +477,11 @@ module1.connect([
         # Transform CT coordinates to RAS
         (get_only_coords, transform_coords_to_ras, [('out_file','coords_path')]),
         (reorient_ct, transform_coords_to_ras, [('transform','in_mat')]),
+
+        # Plot the coordinates in the CT space as spheres
+        (reorient_ct, plot_ct_coords, [('out_file', 'in_mri')]),
+        (transform_coords_to_ras, plot_ct_coords, [('out_file', 'coords_path')]),
+        (plot_ct_coords, datasink, [('out_file', 'electrode_spheres_ct')]),
 
         # Transform CT coords to MRI coords in Voxel Space
         (get_ct_to_mri_xfm, transform_coords_to_mri, [('out_file','xfm_file')]),
