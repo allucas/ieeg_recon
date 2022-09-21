@@ -131,11 +131,11 @@ np.savetxt(os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_n
 
 import pandas as pd
 df_coords = pd.DataFrame()
-df_coords['Electrode Name'] = electrode_names
+df_coords['name'] = electrode_names
 df_coords['x'] = coords[:,0]
 df_coords['y'] = coords[:,1]
 df_coords['z'] = coords[:,2]
-df_coords['Atlas Index'] = electrode_assignment_index
-df_coords['Atlas Label'] = electrode_assignment_label
+df_coords['index'] = electrode_assignment_index
+df_coords['label'] = electrode_assignment_label
 df_coords.to_csv(os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.csv'))
 
