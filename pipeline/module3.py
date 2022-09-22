@@ -139,3 +139,20 @@ df_coords['index'] = electrode_assignment_index
 df_coords['label'] = electrode_assignment_label
 df_coords.to_csv(os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.csv'))
 
+# Generate a segmentation mask of the sampled regions
+
+seg_mask = np.zeros(atlas.shape)
+
+atlas_vals = atlas.get_fdata()
+
+if 'dkt' in atlas_name.lower():
+    electrode_assignment_index = list(set(electrode_assignment_index)-{0,2,41})
+
+electrode_assignment_index = list(set(electrode_assignment_index)-{0})
+
+
+for i in range(len(electrode_assignment_index)):
+    seg_mask[electrode_assignment_index[i]==atlas_vals] = 1
+
+seg_mask_nifti = nib.Nifti1Image(seg_mask, atlas.affine)
+nib.save(seg_mask_nifti, os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_sampling_mask.nii.gz'))
