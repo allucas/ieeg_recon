@@ -35,4 +35,8 @@ conda activate ieeg_recon
 
 When using the standalone Python version, FSL must also be installed (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation). Make sure the `$FSLDIR` variable is properly defined and FSL is sourced before running the `ieeg_recon` script
 
+# Usage
+
+For an overview of the pipeline as well as its usage see here: https://github.com/allucas/ieeg_recon/blob/main/figures/ieeg_recon.pdf
+
 
