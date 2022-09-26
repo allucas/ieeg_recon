@@ -1,5 +1,7 @@
 import nibabel as nib
 import numpy as np
+import pandas as pd
+
 
 from email import header
 from nipype.interfaces import (
@@ -32,18 +34,29 @@ parser.add_argument("-rs","--reference_session")
 parser.add_argument("-ird", "--ieeg_recon_dir", help="Source iEEG Recon Directory")
 parser.add_argument("-a", "--atlas_path", help="Atlas Path")
 parser.add_argument("-an", "--atlas_name", help="Atlas Name")
+parser.add_argument("-lut", "--atlas_lookup_table", help="Atlas Lookup Table")
 parser.add_argument("-ri", "--roi_indices", help="ROI Indices")
 parser.add_argument("-rl", "--roi_labels", help="ROI Labels")
 parser.add_argument("-r","--radius",help="Radius for Electrode atlast Assignment")
 
 
 args = parser.parse_args()
-
 subject = args.subject
 radius = int(args.radius)
 atlas = nib.load(args.atlas_path)
-roi_indices = np.loadtxt(args.roi_indices, dtype=int)
-roi_labels = np.loadtxt(args.roi_labels, dtype=object)
+
+if args.atlas_lookup_table == None:
+    try:
+        roi_indices = np.loadtxt(args.roi_indices, dtype=int)
+        roi_labels = np.loadtxt(args.roi_labels, dtype=object)
+    except:
+        print('No atlas lookup table, or indices/labels files were provided')
+else:
+    lut = pd.read_csv(args.atlas_lookup_table, header=None, delimiter=',').values
+
+    roi_indices = lut[:,0]
+    roi_labels = lut[:,1]
+
 atlas_name = args.atlas_name
 clinical_module_dir = os.path.join(args.ieeg_recon_dir,'module2')
 reference_session = args.reference_session
