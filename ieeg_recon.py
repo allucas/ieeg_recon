@@ -37,14 +37,15 @@ print('Clinical Session: ', args.clinical_session)
 print('Reference Session: ', args.reference_session)
 
 
-# Organize the atlas lookup inputs
-if args.atlas_lookup_table == None:
-    atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_label
-else:
-    atlas_lookup_params = " -lut "+args.atlas_lookup_table
-
 # Run the main pipeline
 if args.module == str(-1):
+
+    # Organize the atlas lookup inputs
+    if args.atlas_lookup_table == None:
+        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_label
+    else:
+        atlas_lookup_params = " -lut "+args.atlas_lookup_table
+
     print('Running Modules 2 and 3 ... \n \n \n \n ')
 
     clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
@@ -53,6 +54,14 @@ if args.module == str(-1):
 
 
 if args.module == str(3):
+
+    # Organize the atlas lookup inputs
+    if args.atlas_lookup_table == None:
+        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_label
+    else:
+        atlas_lookup_params = " -lut "+args.atlas_lookup_table
+
+
     print('Running Module 3 ...')
     if args.ieeg_recon_dir == None:
         clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
