@@ -42,7 +42,7 @@ if args.module == str(-1):
 
     # Organize the atlas lookup inputs
     if args.atlas_lookup_table == None:
-        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_label
+        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
     else:
         atlas_lookup_params = " -lut "+args.atlas_lookup_table
 
@@ -57,7 +57,7 @@ if args.module == str(3):
 
     # Organize the atlas lookup inputs
     if args.atlas_lookup_table == None:
-        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_label
+        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
     else:
         atlas_lookup_params = " -lut "+args.atlas_lookup_table
 
