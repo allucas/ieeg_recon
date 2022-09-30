@@ -73,3 +73,6 @@ if args.module == str(3):
 if args.module == str(2):
     print('Running Module 2 ...')
     subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
+
+    # Create the itk-snap workspace after Module 2 finishes running
+    subprocess.call("python reports/create_workspace.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
