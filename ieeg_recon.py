@@ -51,6 +51,12 @@ if args.module == str(-1):
     clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
     subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
     subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+ atlas_lookup_params +" -r "+args.radius , shell=True)
+    
+    # Create itksnap workspace after module 2 finishes running
+    subprocess.call("python reports/create_workspace.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
+    
+    # Create the Module 2 html report after Module 2 finishes running
+    subprocess.call("python reports/create_html.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
 
 
 if args.module == str(3):
@@ -76,3 +82,6 @@ if args.module == str(2):
 
     # Create the itk-snap workspace after Module 2 finishes running
     subprocess.call("python reports/create_workspace.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
+
+    # Create the Module 2 html report after Module 2 finishes running
+    subprocess.call("python reports/create_html.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)

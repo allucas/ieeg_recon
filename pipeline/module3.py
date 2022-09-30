@@ -62,17 +62,17 @@ clinical_module_dir = os.path.join(args.ieeg_recon_dir,'module2')
 reference_session = args.reference_session
 
 try:
-    img = nib.load(os.path.join(clinical_module_dir,'MRI_RAS',subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w.nii.gz'))
+    img = nib.load(os.path.join(clinical_module_dir,'MRI_RAS', subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w.nii.gz'))
 except FileNotFoundError:
-    img = nib.load(os.path.join(clinical_module_dir,subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_ras.nii.gz'))
+    img = nib.load(os.path.join(clinical_module_dir, subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_ras.nii.gz'))
 
 pixdims = atlas.header['pixdim'][1:4]
 
 max_dim = np.max(pixdims)
 min_radius = np.round(1/max_dim) # the minimum possible radius given the voxel size
 
-coords = np.loadtxt(os.path.join(clinical_module_dir,subject+'_'+reference_session+'_space-T00mri_desc-vox_electrodes.txt'))
-electrode_names = np.loadtxt(os.path.join(clinical_module_dir,subject+'_electrode_names.txt'), dtype=object)
+coords = np.loadtxt(os.path.join(clinical_module_dir, subject+'_'+reference_session+'_space-T00mri_desc-vox_electrodes.txt'))
+electrode_names = np.loadtxt(os.path.join(clinical_module_dir, subject+'_electrode_names.txt'), dtype=object)
 
 
 def split_affine(affine):
@@ -140,7 +140,7 @@ atlas_coords[:,1:4] = coords
 atlas_coords[:,4] = electrode_assignment_index
 atlas_coords[:,5] = electrode_assignment_label
 
-np.savetxt(os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.txt') ,atlas_coords, fmt='%s')
+np.savetxt(os.path.join(atlas_module_dir, subject+'_'+reference_session+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.txt') ,atlas_coords, fmt='%s')
 
 import pandas as pd
 df_coords = pd.DataFrame()
@@ -150,7 +150,7 @@ df_coords['y'] = coords[:,1]
 df_coords['z'] = coords[:,2]
 df_coords['index'] = electrode_assignment_index
 df_coords['label'] = electrode_assignment_label
-df_coords.to_csv(os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.csv'))
+df_coords.to_csv(os.path.join(atlas_module_dir, subject+'_'+reference_session+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.csv'))
 
 # Generate a segmentation mask of the sampled regions
 
@@ -168,4 +168,4 @@ for i in range(len(electrode_assignment_index)):
     seg_mask[electrode_assignment_index[i]==atlas_vals] = 1
 
 seg_mask_nifti = nib.Nifti1Image(seg_mask, atlas.affine)
-nib.save(seg_mask_nifti, os.path.join(atlas_module_dir, subject+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_sampling_mask.nii.gz'))
+nib.save(seg_mask_nifti, os.path.join(atlas_module_dir, subject+'_'+reference_session+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_sampling_mask.nii.gz'))
