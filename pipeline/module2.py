@@ -659,9 +659,18 @@ import plotly.graph_objects as go
 import numpy as np
 import nibabel as nib
 
-coords_mm = np.loadtxt(subject+'_'+session+'_space-T00mri_desc-vox_electrodes.txt')
+def split_affine(affine):
+    return affine[:3,:3], affine[:3,3]
+
+def apply_affine(xyz, affine):
+    M, abc = split_affine(affine)
+    return (np.matmul(M,xyz) + abc).astype(int)
+
+coords_mm = np.loadtxt(subject+'_'+session+'_space-T00mri_desc-mm_electrodes.txt')
 
 ct_thresh = nib.load(subject+'_'+session_clinical+'_acq-3D_space-T00mri_ct_thresholded.nii.gz')
+
+affine = ct_thresh.affine
 
 # x, y, z = coords_mm[:,0], coords_mm[:,1], coords_mm[:,2]
 
@@ -675,7 +684,16 @@ fig = go.Figure()
 
 x,y,z = np.where(ct_thresh.get_fdata()>np.percentile(ct_thresh.get_fdata(),99.99))
 
-fig.add_trace(go.Scatter3d(x=x, y=y, z=z,
+x_transformed = []
+y_transformed = []
+z_transformed = []
+
+for i in range(len(x)):
+    x_t, y_t, z_t = apply_affine([x[i],y[i],z[i]],affine)
+    x_transformed.append(x_t)
+    y_transformed.append(y_t)
+    z_transformed.append(z_t)
+fig.add_trace(go.Scatter3d(x=x_transformed, y=y_transformed, z=z_transformed,
                                 mode='markers', marker=dict(size=2),name='Thresholded CT'))
 
 x, y, z = coords_mm[:,0], coords_mm[:,1], coords_mm[:,2]
@@ -683,6 +701,6 @@ x, y, z = coords_mm[:,0], coords_mm[:,1], coords_mm[:,2]
 fig.add_trace(go.Scatter3d(x=x, y=y, z=z,
                                     mode='markers', marker=dict(size=3),name='Electrode Coordinates'))
 
-fig.update_layout(title_text=subject+' - Electrode Scatterplot (vox)', title_x=0.5)
+fig.update_layout(title_text=subject+' - Electrode Scatterplot (mm)', title_x=0.5)
 fig.show()
 fig.write_html(subject+'_'+session+'_space-T00mri_desc-mm_electrodes_plot.html')
