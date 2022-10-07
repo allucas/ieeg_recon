@@ -377,6 +377,17 @@ def zero_scaling(xfm_file):
 
     return os.path.abspath('zeroed_xfm.mat')
 
+# This function is needed because NiPype skips the first line when saving certain files
+def append_zeros(in_coords):
+    import os
+    import numpy as np
+    mat = np.loadtxt(in_coords)
+    zeros = np.array([0,0,0])
+    appended = np.concatenate([zeros.reshape(1,-1), mat],axis=0)
+    np.savetxt('prepended_coords.txt', appended)
+
+    return os.path.abspath('prepended_coords.txt')
+
 threshold_ct = MapNode(name='threshold_ct',
                 interface=Function(input_names=['in_ct'],
                                     output_names=['out_file'],
@@ -419,6 +430,13 @@ plot_mri_coords = MapNode(name='plot_mri_coords',
 
 get_ct_to_mri_xfm = MapNode(fsl.ConvertXFM(),name='get_ct_to_mri_xfm', iterfield='in_file')
 get_ct_to_mri_xfm.inputs.invert_xfm = True
+
+
+prepend_zeros = MapNode(name='prepend_zeros', interface=Function(input_names=['in_coords'],
+                                    output_names=['out_file'],
+                                    function=append_zeros), iterfield='in_coords')
+
+
 #% Module 2
 
 # Registration of post-implant CT to preimplant MRI
@@ -491,9 +509,12 @@ module1.connect([
         (reorient_mri, transform_coords_to_mri, [('out_file','dest_file')]),
         (transform_coords_to_mri, datasink, [('out_file', 'coordinates_in_mri')]),
 
+        # Prepend zeros before mm space transform
+        (transform_coords_to_ras, prepend_zeros, [('out_file','in_coords')]),
+
         # Transform CT coords to MRI coords in mm Space
         (get_ct_to_mri_xfm, transform_coords_to_mri_mm, [('out_file','xfm_file')]),
-        (transform_coords_to_ras, transform_coords_to_mri_mm, [('out_file','in_coords')]),
+        (prepend_zeros, transform_coords_to_mri_mm, [('out_file','in_coords')]),
 
         (reorient_ct, transform_coords_to_mri_mm, [('out_file','img_file')]),
         (reorient_mri, transform_coords_to_mri_mm, [('out_file','std_file')]),
@@ -583,7 +604,9 @@ os.chdir(out_file)
 
 # Rename some files
 os.rename('coordinates_in_mri/_transform_coords_to_mri0/coords_in_ras_warped.txt','coordinates_in_mri/_transform_coords_to_mri0/' + subject+'_'+session+'_space-T00mri_desc-vox_electrodes.txt')
-os.rename('coordinates_in_mri_mm/_transform_coords_to_mri_mm0/coords_in_ras_warped.txt','coordinates_in_mri_mm/_transform_coords_to_mri_mm0/' + subject+'_'+session+'_space-T00mri_desc-mm_electrodes.txt')
+os.rename('coordinates_in_mri_mm/_transform_coords_to_mri_mm0/prepended_coords_warped.txt','coordinates_in_mri_mm/_transform_coords_to_mri_mm0/' + subject+'_'+session+'_space-T00mri_desc-mm_electrodes.txt')
+
+
 
 # Remove the cached folder
 command = 'rm -r module1'
