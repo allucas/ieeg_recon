@@ -388,6 +388,34 @@ def append_zeros(in_coords):
 
     return os.path.abspath('prepended_coords.txt')
 
+# Get coords in mm from original CT
+def get_coords_in_mm(in_coords, in_img):
+    import nibabel as nib
+    import numpy as np
+    import os
+    transform_matrix = nib.load(in_img).affine
+
+    def split_affine(affine):
+        return affine[:3,:3], affine[:3,3]
+
+    def apply_affine(xyz, affine):
+        M, abc = split_affine(affine)
+        return (np.matmul(M,xyz) + abc).astype(int)
+
+    coords = np.loadtxt(in_coords)
+    
+    # Create empty array to store the coordinates
+    coords_transformed = np.zeros(coords.shape, dtype=object)
+
+    for i in range(len(coords)):
+        coords_transformed[i,:] = apply_affine(coords[i,:], transform_matrix).astype(int)
+
+    coords_transformed = coords_transformed
+
+    np.savetxt('orig_coords_in_mm.txt',coords_transformed, fmt='%s')
+    
+    return os.path.abspath('orig_coords_in_mm.txt')
+
 threshold_ct = MapNode(name='threshold_ct',
                 interface=Function(input_names=['in_ct'],
                                     output_names=['out_file'],
@@ -435,6 +463,10 @@ get_ct_to_mri_xfm.inputs.invert_xfm = True
 prepend_zeros = MapNode(name='prepend_zeros', interface=Function(input_names=['in_coords'],
                                     output_names=['out_file'],
                                     function=append_zeros), iterfield='in_coords')
+
+get_ct_coords_in_mm = MapNode(name='get_ct_coords_in_mm', interface=Function(input_names=['in_coords','in_img'],
+                                    output_names=['out_file'],
+                                    function=get_coords_in_mm), iterfield=['in_coords','in_img'])
 
 
 #% Module 2
@@ -487,6 +519,11 @@ module1.connect([
         ### Coordinate Transformation 
         # Get only the coordinates from the voxtool output (remove electrode names and such)
         (sf, get_only_coords, [('voxtool_coords', 'coords_path')]),
+
+        # Save the CT coordinates in mm space
+        (sf, get_ct_coords_in_mm, [('postimplant_ct','in_img')]),
+        (get_only_coords, get_ct_coords_in_mm, [('out_file','in_coords')]),
+        (get_ct_coords_in_mm, datasink, [('out_file','ct_coords_in_mm')]),
 
         # Save the names on a separate file
         (sf, get_only_names, [('voxtool_coords', 'coords_path')]),
@@ -612,7 +649,7 @@ os.rename('coordinates_in_mri_mm/_transform_coords_to_mri_mm0/prepended_coords_w
 command = 'rm -r module1'
 os.system(command)
 
-    # # Move everything to derivatives folder
+# # Move everything to derivatives folder
 command = 'mv */*/* .'
 os.system(command)
 
