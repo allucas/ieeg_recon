@@ -131,7 +131,7 @@ def get_seg_vox_coords(in_ct ,coords_path):
     # Return an array with the vox coordinates
     def get_original_vox_coords(coords_path):
         coords = np.loadtxt(coords_path, dtype=object)
-        coords = coords[:,1:4].astype(int)
+        coords = coords[:,1:4].astype(float).astype(int)
         return coords
 
 
@@ -243,7 +243,7 @@ def transform_coordinates(in_mat ,coords_path, out_fname, inverse=True):
     # Return an array with the vox coordinates
     def get_original_vox_coords(coords_path):
         coords = np.loadtxt(coords_path, dtype=object)
-        coords = coords[:,1:4].astype(int)
+        coords = coords[:,1:4].astype(float).astype(int)
         return coords
     
     def get_first_and_last_cols_coords(coords_path):
@@ -337,7 +337,7 @@ def get_only_coords(coords_path):
     # Return an array with the vox coordinates
     def get_original_vox_coords(coords_path):
         coords = np.loadtxt(coords_path, dtype=object)
-        coords = coords[:,1:4].astype(int)
+        coords = coords[:,1:4].astype(float).astype(int)
         return coords
     
 
