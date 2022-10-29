@@ -35,6 +35,10 @@ conda activate ieeg_recon
 
 When using the standalone Python version, FSL must also be installed (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation). Make sure the `$FSLDIR` variable is properly defined and FSL is sourced before running the `ieeg_recon` script
 
+### Installing Greedy and C3D
+
+Some registrations between the MRI and CT could be improved by an extra registration step using Greedy (https://sites.google.com/view/greedyreg/about), which implements similar procedures as ANTs. The `-g` flag, when running module 2 applies an extra, optional, rigid registration after FLIRT. Both Greedy and C3D need to be installed for this to work. They can both easily be installed through ITK-Snap (http://www.itksnap.org/pmwiki/pmwiki.php?n=Main.HomePage) by going to Help > Install Command Line Tools. If you would like to install these packages without ITK-Snap, the binaries can be found here: http://www.itksnap.org/pmwiki/pmwiki.php?n=Documentation.CommandLine.
+
 # Usage
 
 For an overview of the pipeline as well as its usage see here: https://github.com/allucas/ieeg_recon/blob/main/figures/ieeg_recon.pdf

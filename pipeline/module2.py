@@ -15,6 +15,10 @@ from nipype.interfaces.ants.base import Info as ANTsInfo
 from nipype.interfaces.ants import N4BiasFieldCorrection
 from nipype.interfaces.image import Reorient
 
+## Add the Command Line Interface
+from nipype.interfaces.base import CommandLineInputSpec, File, TraitedSpec,  CommandLine
+from nipype.interfaces.c3 import C3dAffineTool
+
 ## Argument Parser
 import argparse
 parser = argparse.ArgumentParser()
@@ -24,6 +28,7 @@ parser.add_argument("-s", "--subject", help="Subject ID")
 parser.add_argument("-d", "--source_directory", help="Source Directory")
 parser.add_argument("-cs","--clinical_session")
 parser.add_argument("-rs","--reference_session")
+parser.add_argument('-g','--greedy', action='store_true')
 
 args = parser.parse_args()
 
@@ -447,6 +452,9 @@ transform_coords_to_mri_mm = MapNode(fsl.utils.WarpPointsToStd(), name='transfor
 
 transform_ct_to_mri = MapNode(fsl.ApplyXFM(), name='transform_ct_to_mri', iterfield=['in_file','in_matrix_file','reference'])
 
+# this is only used if Greedy is used
+transform_mri_to_ct = MapNode(fsl.ApplyXFM(), name='transform_mri_to_ct', iterfield=['in_file','in_matrix_file','reference'])
+
 transform_ct_to_ras = MapNode(fsl.utils.WarpPoints(), name='transform_ct_to_ras', iterfield=['in_coords','xfm_file', 'src_file','dest_file'])
 #transform_mri_to_ras = MapNode(fsl.ApplyXFM(), name='transform_ct_to_ras', iterfield=['in_file','in_matrix_file','reference'])
 
@@ -468,6 +476,75 @@ get_ct_coords_in_mm = MapNode(name='get_ct_coords_in_mm', interface=Function(inp
                                     output_names=['out_file'],
                                     function=get_coords_in_mm), iterfield=['in_coords','in_img'])
 
+## Define command line interface for greedy
+
+class CustomGreedyInputSpec(CommandLineInputSpec):
+    ref_img = File(exists=True, mandatory=True, argstr='-d 3 -a -i %s', position=0, desc='the reference image')
+    mov_img = File(exists=True, mandatory=True, argstr='%s -ia-identity -dof 6 -n 100x50x0 -m NMI', position=1, desc='the moving image')
+
+    # Do not set exists=True for output files!
+    out_file = File(mandatory=True, argstr='-o %s', position=2, desc='the output affine matrix')
+
+class CustomGreedyOutputSpec(TraitedSpec):
+    out_file = File(desc='the output affine matrix')
+
+class CustomGreedy(CommandLine):
+    _cmd = 'greedy'
+    input_spec = CustomGreedyInputSpec
+    output_spec = CustomGreedyOutputSpec
+
+    def _list_outputs(self):
+
+        # Get the attribute saved during _run_interface
+        return {'out_file': self.inputs.out_file}
+
+run_greedy = MapNode(CustomGreedy(), name='run_greedy', iterfield=['ref_img','mov_img'])
+run_greedy.inputs.out_file = os.path.join(out_file,'greedy_affine.mat')
+
+## Define command line interface for C3dAffineTool to get ITK file to RAS
+
+class CustomC3DInputSpec(CommandLineInputSpec):
+    ref_img = File(exists=True, mandatory=True, argstr='-ref %s', position=0, desc='the reference image')
+    mov_img = File(exists=True, mandatory=True, argstr='-src %s', position=1, desc='the moving image')
+    xfm_file = File(exists=True, mandatory=True, argstr='%s -ras2fsl', position=2, desc='the affine matrix in itk space')
+    # Do not set exists=True for output files!
+    out_file = File(mandatory=True, argstr='-o %s', position=3, desc='the output affine matrix in fsl space')
+
+class CustomC3DOutputSpec(TraitedSpec):
+    out_file = File(desc='the output affine matrix')
+
+class CustomC3D(CommandLine):
+    _cmd = 'c3d_affine_tool'
+    input_spec = CustomC3DInputSpec
+    output_spec = CustomC3DOutputSpec
+
+    def _list_outputs(self):
+
+        # Get the attribute saved during _run_interface
+        return {'out_file': self.inputs.out_file}
+
+
+
+## Add conversion of XFM from ITK to FSL
+convert_greedy = MapNode(CustomC3D(), name='convert_greedy', iterfield=['ref_img','mov_img','xfm_file'])
+convert_greedy.inputs.out_file = os.path.join(out_file,'greedy_affine_fsl.mat')
+
+## Add multiplication of affines to combine greedy with fsl
+def matmul(xfm_1, xfm_2):
+    import numpy as np
+    import os
+    affine_a = np.loadtxt(xfm_1)
+    affine_b = np.loadtxt(xfm_2)
+    affine_c = np.matmul(affine_b, affine_a)
+    np.savetxt('affine_combined.mat',affine_c)
+    
+    return os.path.abspath('affine_combined.mat')
+
+combine_affines = MapNode(name='combine_affines', interface=Function(input_names=['xfm_1','xfm_2'],
+                                    output_names=['out_file'],
+                                    function=matmul), iterfield=['xfm_1','xfm_2'])
+
+
 
 #% Module 2
 
@@ -487,7 +564,10 @@ reorient_ct = MapNode(Reorient(orientation='RAS'), name='reorient_ct', iterfield
 #%%
 module1 = Workflow(name="module1", base_dir=out_file)
 
-module1.connect([
+apply_greedy = args.greedy
+
+if apply_greedy == False:
+    module1.connect([
 
         # Convert input images to RAS orientation
         (sf, reorient_ct, [('postimplant_ct','in_file')]),
@@ -565,6 +645,107 @@ module1.connect([
         # Save the outputs
         
 ])
+
+else:
+    module1.connect([
+
+        # Convert input images to RAS orientation
+        (sf, reorient_ct, [('postimplant_ct','in_file')]),
+        (sf, reorient_mri, [('preimplant_mri','in_file')]),
+        (reorient_mri, datasink, [('out_file','MRI_RAS')]),
+        (reorient_ct, datasink, [('out_file','CT_RAS')]),
+
+        # Threshold the CT for better registration and visualization
+        (reorient_ct, threshold_ct, [('out_file', 'in_ct')]),
+        (threshold_ct, datasink, [('out_file', 'ct_thresholded')]),
+
+        # Perform MRI to CT rigid registration
+        (reorient_mri, spatial_norm_rigid, [('out_file', 'in_file')]),
+        (threshold_ct, spatial_norm_rigid, [('out_file', 'reference')]),
+        (spatial_norm_rigid, datasink, [('out_file', 't00_registered_to_ct'),
+                                    ('out_matrix_file', 't00_to_ct_transform')]),
+
+        # Get Greedy transform
+        (spatial_norm_rigid,run_greedy,[('out_file','mov_img')]),
+        (threshold_ct,run_greedy,[('out_file','ref_img')]),
+        (run_greedy, datasink, [('out_file','greedy_affine')]),
+
+        # Convert Greedy Transform to FSL
+        (run_greedy,convert_greedy,[('out_file','xfm_file')]),
+        (spatial_norm_rigid,convert_greedy,[('out_file','mov_img')]),
+        (threshold_ct,convert_greedy,[('out_file','ref_img')]),
+
+        # Combine the two affines: Greedy and FLIRT
+        (spatial_norm_rigid, combine_affines, [('out_matrix_file','xfm_1')]),
+        (convert_greedy, combine_affines, [('out_file','xfm_2')]),
+        (combine_affines, datasink, [('out_file','mri_to_ct_affine')]),
+
+        # Transform the MRI to the CT (since greedy does not do that for us)
+        (combine_affines, transform_mri_to_ct, [('out_file','in_matrix_file')]),
+        (threshold_ct, transform_mri_to_ct, [('out_file','reference')]),
+        (reorient_mri, transform_mri_to_ct, [('out_file','in_file')]),
+        (transform_mri_to_ct, datasink, [('out_file','mri_in_t01_space')]),
+
+        # Get the inverse of the MRI to CT registration matrix - This give CT to MRI registration
+        (combine_affines, get_ct_to_mri_xfm, [('out_file','in_file')]),
+        (get_ct_to_mri_xfm, datasink, [('out_file','ct_to_t00_transform')]),
+
+        # Apply the CT to MRI registration to the CT
+        (get_ct_to_mri_xfm, transform_ct_to_mri, [('out_file','in_matrix_file')]),
+        (threshold_ct, transform_ct_to_mri, [('out_file','in_file')]),
+        (reorient_mri, transform_ct_to_mri, [('out_file','reference')]),
+        (transform_ct_to_mri, datasink, [('out_file','ct_in_t00_space')]),
+
+        ### Coordinate Transformation 
+        # Get only the coordinates from the voxtool output (remove electrode names and such)
+        (sf, get_only_coords, [('voxtool_coords', 'coords_path')]),
+
+        # Save the CT coordinates in mm space
+        (sf, get_ct_coords_in_mm, [('postimplant_ct','in_img')]),
+        (get_only_coords, get_ct_coords_in_mm, [('out_file','in_coords')]),
+        (get_ct_coords_in_mm, datasink, [('out_file','ct_coords_in_mm')]),
+
+        # Save the names on a separate file
+        (sf, get_only_names, [('voxtool_coords', 'coords_path')]),
+        (get_only_names, datasink, [('out_file','electrode_names')]),
+
+        # Transform CT coordinates to RAS
+        (get_only_coords, transform_coords_to_ras, [('out_file','coords_path')]),
+        (reorient_ct, transform_coords_to_ras, [('transform','in_mat')]),
+
+        # Plot the coordinates in the CT space as spheres
+        (reorient_ct, plot_ct_coords, [('out_file', 'in_mri')]),
+        (transform_coords_to_ras, plot_ct_coords, [('out_file', 'coords_path')]),
+        (plot_ct_coords, datasink, [('out_file', 'electrode_spheres_ct')]),
+
+        # Transform CT coords to MRI coords in Voxel Space
+        (get_ct_to_mri_xfm, transform_coords_to_mri, [('out_file','xfm_file')]),
+        (transform_coords_to_ras, transform_coords_to_mri, [('out_file','in_coords')]),
+
+        (threshold_ct, transform_coords_to_mri, [('out_file','src_file')]),
+        (reorient_mri, transform_coords_to_mri, [('out_file','dest_file')]),
+        (transform_coords_to_mri, datasink, [('out_file', 'coordinates_in_mri')]),
+
+        # Prepend zeros before mm space transform
+        (transform_coords_to_ras, prepend_zeros, [('out_file','in_coords')]),
+
+        # Transform CT coords to MRI coords in mm Space
+        (get_ct_to_mri_xfm, transform_coords_to_mri_mm, [('out_file','xfm_file')]),
+        (prepend_zeros, transform_coords_to_mri_mm, [('out_file','in_coords')]),
+
+        (reorient_ct, transform_coords_to_mri_mm, [('out_file','img_file')]),
+        (reorient_mri, transform_coords_to_mri_mm, [('out_file','std_file')]),
+        (transform_coords_to_mri_mm, datasink, [('out_file', 'coordinates_in_mri_mm')]),
+
+        # Plot final coordinates in MRI space as spheres
+        (transform_coords_to_mri, plot_mri_coords, [('out_file', 'coords_path')]),
+        (reorient_mri, plot_mri_coords, [('out_file', 'in_mri')]),
+        (plot_mri_coords, datasink, [('out_file', 'electrode_spheres_mri')]),
+
+        # Save the outputs
+        
+])
+
 module1.run()
 
 # Save the itksnap labels
@@ -644,6 +825,9 @@ os.rename('coordinates_in_mri/_transform_coords_to_mri0/coords_in_ras_warped.txt
 os.rename('coordinates_in_mri_mm/_transform_coords_to_mri_mm0/prepended_coords_warped.txt','coordinates_in_mri_mm/_transform_coords_to_mri_mm0/' + subject+'_'+session+'_space-T00mri_desc-mm_electrodes.txt')
 
 
+# Remove FLIRT ouput since it conflicts with the other output
+command = 'rm -r t00_registered_to_ct'
+os.system(command)
 
 # Remove the cached folder
 command = 'rm -r module1'
@@ -664,20 +848,37 @@ os.system(command)
 
 os.rename(subject+'_'+session_clinical+'_acq-3D_space-T01ct_ct_ras_thresholded_flirt.nii.gz', subject+'_'+session_clinical+'_acq-3D_space-T00mri_ct_thresholded.nii.gz')
 
-try:
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
+if apply_greedy == False:
 
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
+    try:
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
 
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
 
-except FileNotFoundError:
-    
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
 
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
+    except FileNotFoundError:
+        
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
 
-    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
+
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
+
+else:
+
+    print('Greedy was used')
+    os.rename('affine_combined.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
+
+    os.rename('affine_combined_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
+
+    try:
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
+
+        
+    except FileNotFoundError:
+        
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
 
 
 os.rename('electrode_names_only.txt', subject+'_electrode_names.txt')
