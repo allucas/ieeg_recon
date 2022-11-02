@@ -110,10 +110,41 @@ def most_common(lst):
 def match_label(index,index_list, label_list):
     return label_list[np.where(index_list==index)[0][0]]
 
+def unique(list1):
+  
+    # initialize a null list
+    unique_list = []
+  
+    # traverse for all elements
+    for x in list1:
+        # check if exists in unique_list or not
+        if x not in unique_list:
+            unique_list.append(x)
+    return unique_list
+
+
+def most_common_list(lst):
+    unique_list = unique(sorted(lst, key = lst.count,
+                                reverse = True))
+    
+    unique_percent = list(map(lambda x: lst.count(x)/len(lst), unique_list))
+
+    return unique_list, unique_percent
+
+def match_label_list(index_list_list, index_list_orig, label_list):
+    label_list_list = []
+    for i in range(len(index_list_list)):
+        label_list_list.append(match_label(index_list_list[i], index_list_orig, label_list))
+    return label_list_list
+
 atlas_data = atlas.get_fdata()
 
 electrode_assignment_index = []
 electrode_assignment_label = []
+
+electrode_assignment_index_list = []
+electrode_assignment_label_list = []
+
 
 for i in range(len(coords)):
     coords_atlas = apply_affine(coords[i,:],np.matmul(np.linalg.pinv(atlas.affine),img.affine))
@@ -128,12 +159,18 @@ for i in range(len(coords)):
     electrode_assignment_index.append(index)
     electrode_assignment_label.append(label)
 
+    # Store a sorted list of possible labels
+    unique_list, percent_list = most_common_list(list(atlas_data[mask==1]))
+    electrode_assignment_index_list.append(percent_list)
+    electrode_assignment_label_list.append(match_label_list(unique_list,roi_indices, roi_labels))
+                
+
 atlas_module_dir = os.path.join(clinical_module_dir,'..','module3')
 
 if os.path.exists(atlas_module_dir) == False:
     os.mkdir(atlas_module_dir)
 
-atlas_coords = np.zeros((len(coords), 6), dtype=object)
+atlas_coords = np.zeros((len(coords), 8), dtype=object)
 
 atlas_coords[:,0] = electrode_names
 atlas_coords[:,1:4] = coords
@@ -150,7 +187,13 @@ df_coords['y'] = coords[:,1]
 df_coords['z'] = coords[:,2]
 df_coords['index'] = electrode_assignment_index
 df_coords['label'] = electrode_assignment_label
+
 df_coords.to_csv(os.path.join(atlas_module_dir, subject+'_'+reference_session+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.csv'))
+
+df_coords['labels_sorted'] = electrode_assignment_label_list
+df_coords['percent_assigned'] = electrode_assignment_index_list
+
+df_coords.to_json(os.path.join(atlas_module_dir, subject+'_'+reference_session+'_space-T00mri_atlas-'+atlas_name+'_radius-'+str(radius)+'_desc-vox_coordinates.json'), lines=True, orient='records')
 
 # Generate a segmentation mask of the sampled regions
 
