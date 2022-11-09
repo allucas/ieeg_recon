@@ -29,6 +29,7 @@ parser.add_argument("-d", "--source_directory", help="Source Directory")
 parser.add_argument("-cs","--clinical_session")
 parser.add_argument("-rs","--reference_session")
 parser.add_argument('-g','--greedy', action='store_true')
+parser.add_argument('-gc','--greedy_centering', action='store_true')
 
 args = parser.parse_args()
 
@@ -485,6 +486,16 @@ class CustomGreedyInputSpec(CommandLineInputSpec):
     # Do not set exists=True for output files!
     out_file = File(mandatory=True, argstr='-o %s', position=2, desc='the output affine matrix')
 
+
+class CustomGreedyInputSpec_w_image_centering(CommandLineInputSpec):
+    ref_img = File(exists=True, mandatory=True, argstr='-d 3 -a -i %s', position=0, desc='the reference image')
+    mov_img = File(exists=True, mandatory=True, argstr='%s -ia-image-centers -dof 6 -n 100x100x0x0 -m NMI', position=1, desc='the moving image')
+
+    # Do not set exists=True for output files!
+    out_file = File(mandatory=True, argstr='-o %s', position=2, desc='the output affine matrix')
+
+
+
 class CustomGreedyOutputSpec(TraitedSpec):
     out_file = File(desc='the output affine matrix')
 
@@ -498,8 +509,22 @@ class CustomGreedy(CommandLine):
         # Get the attribute saved during _run_interface
         return {'out_file': self.inputs.out_file}
 
+class CustomGreedy_w_image_centering(CommandLine):
+    _cmd = 'greedy'
+    input_spec = CustomGreedyInputSpec_w_image_centering
+    output_spec = CustomGreedyOutputSpec
+
+    def _list_outputs(self):
+
+        # Get the attribute saved during _run_interface
+        return {'out_file': self.inputs.out_file}
+
+
 run_greedy = MapNode(CustomGreedy(), name='run_greedy', iterfield=['ref_img','mov_img'])
 run_greedy.inputs.out_file = os.path.join(out_file,'greedy_affine.mat')
+
+run_greedy_w_centering = MapNode(CustomGreedy_w_image_centering(), name='run_greedy_w_centering', iterfield=['ref_img','mov_img'])
+run_greedy_w_centering.inputs.out_file = os.path.join(out_file,'greedy_affine.mat')
 
 ## Define command line interface for C3dAffineTool to get ITK file to RAS
 
@@ -566,7 +591,9 @@ module1 = Workflow(name="module1", base_dir=out_file)
 
 apply_greedy = args.greedy
 
-if apply_greedy == False:
+greedy_centering = args.greedy_centering
+
+if apply_greedy == False and greedy_centering==False:
     module1.connect([
 
         # Convert input images to RAS orientation
@@ -646,7 +673,7 @@ if apply_greedy == False:
         
 ])
 
-else:
+elif apply_greedy==True and greedy_centering==False:
     module1.connect([
 
         # Convert input images to RAS orientation
@@ -746,6 +773,98 @@ else:
         
 ])
 
+elif greedy_centering==True and apply_greedy==False:
+    module1.connect([
+
+        # Convert input images to RAS orientation
+        (sf, reorient_ct, [('postimplant_ct','in_file')]),
+        (sf, reorient_mri, [('preimplant_mri','in_file')]),
+        (reorient_mri, datasink, [('out_file','MRI_RAS')]),
+        (reorient_ct, datasink, [('out_file','CT_RAS')]),
+
+        # Threshold the CT for better registration and visualization
+        (reorient_ct, threshold_ct, [('out_file', 'in_ct')]),
+        (threshold_ct, datasink, [('out_file', 'ct_thresholded')]),
+
+        # Get Greedy transform
+        (reorient_mri,run_greedy_w_centering,[('out_file','mov_img')]),
+        (threshold_ct,run_greedy_w_centering,[('out_file','ref_img')]),
+        (run_greedy_w_centering, datasink, [('out_file','greedy_affine')]),
+
+        # Convert Greedy Transform to FSL
+        (run_greedy_w_centering,convert_greedy,[('out_file','xfm_file')]),
+        (reorient_mri,convert_greedy,[('out_file','mov_img')]),
+        (threshold_ct,convert_greedy,[('out_file','ref_img')]),
+
+        # Transform the MRI to the CT (since greedy does not do that for us)
+        (convert_greedy, transform_mri_to_ct, [('out_file','in_matrix_file')]),
+        (threshold_ct, transform_mri_to_ct, [('out_file','reference')]),
+        (reorient_mri, transform_mri_to_ct, [('out_file','in_file')]),
+        (transform_mri_to_ct, datasink, [('out_file','mri_in_t01_space')]),
+
+        # Get the inverse of the MRI to CT registration matrix - This give CT to MRI registration
+        (convert_greedy, get_ct_to_mri_xfm, [('out_file','in_file')]),
+        (get_ct_to_mri_xfm, datasink, [('out_file','ct_to_t00_transform')]),
+
+        # Apply the CT to MRI registration to the CT
+        (get_ct_to_mri_xfm, transform_ct_to_mri, [('out_file','in_matrix_file')]),
+        (threshold_ct, transform_ct_to_mri, [('out_file','in_file')]),
+        (reorient_mri, transform_ct_to_mri, [('out_file','reference')]),
+        (transform_ct_to_mri, datasink, [('out_file','ct_in_t00_space')]),
+
+        ### Coordinate Transformation 
+        # Get only the coordinates from the voxtool output (remove electrode names and such)
+        (sf, get_only_coords, [('voxtool_coords', 'coords_path')]),
+
+        # Save the CT coordinates in mm space
+        (sf, get_ct_coords_in_mm, [('postimplant_ct','in_img')]),
+        (get_only_coords, get_ct_coords_in_mm, [('out_file','in_coords')]),
+        (get_ct_coords_in_mm, datasink, [('out_file','ct_coords_in_mm')]),
+
+        # Save the names on a separate file
+        (sf, get_only_names, [('voxtool_coords', 'coords_path')]),
+        (get_only_names, datasink, [('out_file','electrode_names')]),
+
+        # Transform CT coordinates to RAS
+        (get_only_coords, transform_coords_to_ras, [('out_file','coords_path')]),
+        (reorient_ct, transform_coords_to_ras, [('transform','in_mat')]),
+
+        # Plot the coordinates in the CT space as spheres
+        (reorient_ct, plot_ct_coords, [('out_file', 'in_mri')]),
+        (transform_coords_to_ras, plot_ct_coords, [('out_file', 'coords_path')]),
+        (plot_ct_coords, datasink, [('out_file', 'electrode_spheres_ct')]),
+
+        # Transform CT coords to MRI coords in Voxel Space
+        (get_ct_to_mri_xfm, transform_coords_to_mri, [('out_file','xfm_file')]),
+        (transform_coords_to_ras, transform_coords_to_mri, [('out_file','in_coords')]),
+
+        (threshold_ct, transform_coords_to_mri, [('out_file','src_file')]),
+        (reorient_mri, transform_coords_to_mri, [('out_file','dest_file')]),
+        (transform_coords_to_mri, datasink, [('out_file', 'coordinates_in_mri')]),
+
+        # Prepend zeros before mm space transform
+        (transform_coords_to_ras, prepend_zeros, [('out_file','in_coords')]),
+
+        # Transform CT coords to MRI coords in mm Space
+        (get_ct_to_mri_xfm, transform_coords_to_mri_mm, [('out_file','xfm_file')]),
+        (prepend_zeros, transform_coords_to_mri_mm, [('out_file','in_coords')]),
+
+        (reorient_ct, transform_coords_to_mri_mm, [('out_file','img_file')]),
+        (reorient_mri, transform_coords_to_mri_mm, [('out_file','std_file')]),
+        (transform_coords_to_mri_mm, datasink, [('out_file', 'coordinates_in_mri_mm')]),
+
+        # Plot final coordinates in MRI space as spheres
+        (transform_coords_to_mri, plot_mri_coords, [('out_file', 'coords_path')]),
+        (reorient_mri, plot_mri_coords, [('out_file', 'in_mri')]),
+        (plot_mri_coords, datasink, [('out_file', 'electrode_spheres_mri')]),
+
+        # Save the outputs
+        
+])
+
+else:
+    print('Flags -g and -gc are exclusive, please pick only one...')
+
 module1.run()
 
 # Save the itksnap labels
@@ -817,6 +936,7 @@ create_itk_snap_label_file()
 
 # Clean the output folder 
 
+input('Check outputs...')
 # # Remove the module cached folder
 os.chdir(out_file)
 
@@ -825,9 +945,12 @@ os.rename('coordinates_in_mri/_transform_coords_to_mri0/coords_in_ras_warped.txt
 os.rename('coordinates_in_mri_mm/_transform_coords_to_mri_mm0/prepended_coords_warped.txt','coordinates_in_mri_mm/_transform_coords_to_mri_mm0/' + subject+'_'+session+'_space-T00mri_desc-mm_electrodes.txt')
 
 
-# Remove FLIRT ouput since it conflicts with the other output
-command = 'rm -r t00_registered_to_ct'
-os.system(command)
+#Remove FLIRT ouput since it conflicts with the Greedy output
+if apply_greedy == True:
+    command = 'rm -r t00_registered_to_ct'
+    os.system(command)
+
+
 
 # Remove the cached folder
 command = 'rm -r module1'
@@ -848,7 +971,7 @@ os.system(command)
 
 os.rename(subject+'_'+session_clinical+'_acq-3D_space-T01ct_ct_ras_thresholded_flirt.nii.gz', subject+'_'+session_clinical+'_acq-3D_space-T00mri_ct_thresholded.nii.gz')
 
-if apply_greedy == False:
+if apply_greedy == False and greedy_centering==False:
 
     try:
         os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
@@ -865,12 +988,28 @@ if apply_greedy == False:
 
         os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
 
-else:
+elif apply_greedy==True and greedy_centering==False:
 
     print('Greedy was used')
     os.rename('affine_combined.mat', subject+'_'+session+'_T00mri_to_T01ct.mat')
 
     os.rename('affine_combined_inv.mat', subject+'_'+session+'_T01ct_to_T00mri.mat')
+
+    try:
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
+
+        
+    except FileNotFoundError:
+        
+        os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')
+
+elif apply_greedy==False and greedy_centering==True:
+
+    print('Greedy centering was used')
+    os.rename('greedy_affine.mat', subject+'_'+session+'_T00mri_to_T01ct_greedy.mat')
+    os.rename('greedy_affine_fsl.mat', subject+'_'+session+'_T00mri_to_T01ct_fsl.mat')
+
+    os.rename('greedy_affine_fsl_inv.mat', subject+'_'+session+'_T01ct_to_T00mri_fsl.mat')
 
     try:
         os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-T01ct_T1w.nii.gz')

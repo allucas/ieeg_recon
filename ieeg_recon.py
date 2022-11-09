@@ -18,6 +18,7 @@ parser.add_argument("-m","--module", help='Module to Run, -1 to run modules 2 an
 parser.add_argument("-d", "--source_directory", help="Source Directory")
 parser.add_argument("-cs","--clinical_session")
 parser.add_argument('-g','--greedy', action='store_true')
+parser.add_argument('-gc','--greedy_centering', action='store_true')
 
 
 # Module 3 arguments
@@ -52,10 +53,14 @@ if args.module == str(-1):
     clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
     
     if args.greedy:
+        print('Module 2 is using Greedy correction ...')
         subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session+" -g" , shell=True)
+    elif args.greedy_centering:
+        print('Module 2 is using Greedy centering alone ...')
+        subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session+" -gc" , shell=True)
     else:
         subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
-
+        
     subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+ atlas_lookup_params +" -r "+args.radius , shell=True)
     
     # Create itksnap workspace after module 2 finishes running
@@ -84,13 +89,17 @@ if args.module == str(3):
 
 if args.module == str(2):
     print('Running Module 2 ...')
+
     if args.greedy:
         print('Module 2 is using Greedy correction ...')
         subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session+" -g" , shell=True)
+    elif args.greedy_centering:
+        print('Module 2 is using Greedy centering alone ...')
+        subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session+" -gc" , shell=True)
     else:
         subprocess.call("python pipeline/module2.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
 
-    # Create the itk-snap workspace after Module 2 finishes running
+ # Create the itk-snap workspace after Module 2 finishes running
     subprocess.call("python reports/create_workspace.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
 
     # Create the Module 2 html report after Module 2 finishes running
