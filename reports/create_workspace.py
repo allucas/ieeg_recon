@@ -892,3 +892,4 @@ the same. Do not modify the SaveLocation entry, or this will not work.
 # Write the workspace file
 with open(os.path.join(os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'module2'), subject+'_'+reference_session+'_itksnap_workspace.itksnap'), 'w') as f:
     f.write(html)
+

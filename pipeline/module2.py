@@ -480,7 +480,7 @@ get_ct_coords_in_mm = MapNode(name='get_ct_coords_in_mm', interface=Function(inp
 
 class CustomGreedyInputSpec(CommandLineInputSpec):
     ref_img = File(exists=True, mandatory=True, argstr='-d 3 -a -i %s', position=0, desc='the reference image')
-    mov_img = File(exists=True, mandatory=True, argstr='%s -ia-identity -dof 6 -n 100x50x0 -m NMI', position=1, desc='the moving image')
+    mov_img = File(exists=True, mandatory=True, argstr='%s -ia-identity -dof 6 -n 100x100x0x0 -m NMI', position=1, desc='the moving image')
 
     # Do not set exists=True for output files!
     out_file = File(mandatory=True, argstr='-o %s', position=2, desc='the output affine matrix')
