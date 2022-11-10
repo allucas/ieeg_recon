@@ -936,7 +936,6 @@ create_itk_snap_label_file()
 
 # Clean the output folder 
 
-input('Check outputs...')
 # # Remove the module cached folder
 os.chdir(out_file)
 
@@ -1079,5 +1078,5 @@ fig.add_trace(go.Scatter3d(x=x, y=y, z=z,
                                     mode='markers', marker=dict(size=3),name='Electrode Coordinates'))
 
 fig.update_layout(title_text=subject+' - Electrode Scatterplot (mm)', title_x=0.5)
-fig.show()
+#fig.show()
 fig.write_html(subject+'_'+session+'_space-T00mri_desc-mm_electrodes_plot.html')
