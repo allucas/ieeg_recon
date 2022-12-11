@@ -73,7 +73,7 @@ Desktop/BIDS/
 Then running module 2 and 3, with built-in AntsPyNet Desikan-Killiany-Tourville Atlas deep learning segmentation, using Greedy for CT-MRI co-registration, and generating an additional MNI registration for visualization purposes, we do:
 
 ```
-python ieeg_recon.py -d Desktop/BIDS/ -s sub-RID0031 -rs ses-research3T -cs ses-clinical01 -m -1 -apn -mni -r 2
+python ieeg_recon.py -d Desktop/BIDS/ -s sub-RID0031 -rs ses-research3T -cs ses-clinical01 -m -1 -gc -apn -mni -r 2 
 ```
 
 - `d`: specifies the BIDS directory where all the subjects are located
@@ -81,6 +81,7 @@ python ieeg_recon.py -d Desktop/BIDS/ -s sub-RID0031 -rs ses-research3T -cs ses-
 - `rs`: specifies the session name where the reference MRI is located
 - `cs`: specifies the session name where the post-implant CT and the electrode coordinates from VoxTool are located
 - `m`: specifies the module to run (-1 runs both modules 2 and 3)
+- `gc`: specifies to run using only Greedy for module 2
 - `apn`: specifies to run AntsPyNet DKT and Atropos segmentation for module 3
 - `mni`: specifies to run an additional MNI registration in module 3 for visualization purposes
 - `r`: specifies the radius (in mm) of the electrode spheres used to assign regions to each electrode coordinate
