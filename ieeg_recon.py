@@ -29,7 +29,7 @@ parser.add_argument("-rl", "--roi_labels", help="ROI Labels")
 parser.add_argument("-r","--radius", help="Radius for Electrode atlast Assignment")
 parser.add_argument("-ird", "--ieeg_recon_dir", help="Source iEEG Recon Directory")
 parser.add_argument("-lut", "--atlas_lookup_table", help="Atlas Lookup Table")
-
+parser.add_argument("-apn","--ants_pynet", help="Run AntsPyNet DKT Segmentation",action='store_true')
 
 
 args = parser.parse_args()
@@ -43,10 +43,15 @@ print('Reference Session: ', args.reference_session)
 if args.module == str(-1):
 
     # Organize the atlas lookup inputs
-    if args.atlas_lookup_table == None:
-        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
+    if args.ants_pynet == False:
+        if args.atlas_lookup_table == None:
+            atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
+        else:
+            atlas_lookup_params = " -lut "+args.atlas_lookup_table
     else:
-        atlas_lookup_params = " -lut "+args.atlas_lookup_table
+        atlas_lookup_params = " -apn"
+        args.atlas_name = 'DKTantspynet'
+        args.atlas_path = 'notneeded'
 
     print('Running Modules 2 and 3 ... \n \n \n \n ')
 
@@ -73,10 +78,15 @@ if args.module == str(-1):
 if args.module == str(3):
 
     # Organize the atlas lookup inputs
-    if args.atlas_lookup_table == None:
-        atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
+    if args.ants_pynet == False:
+        if args.atlas_lookup_table == None:
+            atlas_lookup_params = " -ri "+args.roi_indices+" -rl "+args.roi_labels
+        else:
+            atlas_lookup_params = " -lut "+args.atlas_lookup_table
     else:
-        atlas_lookup_params = " -lut "+args.atlas_lookup_table
+        atlas_lookup_params = " -apn"
+        args.atlas_name = 'DKTantspynet'
+        args.atlas_path = 'notneeded'
 
 
     print('Running Module 3 ...')
@@ -84,8 +94,8 @@ if args.module == str(3):
         clinical_module_dir=os.path.join(args.source_directory, args.subject, 'derivatives','ieeg_recon')
     else:
         clinical_module_dir=args.ieeg_recon_dir
-
-    subprocess.call("python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+ atlas_lookup_params +" -r "+args.radius , shell=True)
+    call = "python pipeline/module3.py -s "+args.subject+" -rs "+args.reference_session+" -ird "+clinical_module_dir+" -a "+args.atlas_path+" -an "+args.atlas_name+ atlas_lookup_params +" -r "+args.radius
+    subprocess.call( call , shell=True)
 
 if args.module == str(2):
     print('Running Module 2 ...')
