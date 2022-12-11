@@ -31,6 +31,9 @@ parser.add_argument("-ird", "--ieeg_recon_dir", help="Source iEEG Recon Director
 parser.add_argument("-lut", "--atlas_lookup_table", help="Atlas Lookup Table")
 parser.add_argument("-apn","--ants_pynet", help="Run AntsPyNet DKT Segmentation",action='store_true')
 
+# Module 3 MNI
+parser.add_argument("-mni","--run_mni", help="Run MNI registration",action='store_true')
+
 
 args = parser.parse_args()
 
@@ -114,3 +117,7 @@ if args.module == str(2):
 
     # Create the Module 2 html report after Module 2 finishes running
     subprocess.call("python reports/create_html.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory+" -cs "+args.clinical_session, shell=True)
+
+if args.run_mni:
+    print('Running MNI registration, make sure Module 2 has ran already (i.e. run with -m 2 or -m -1 flags if not)')
+    subprocess.call("python pipeline/module3_mni.py -s "+args.subject+" -rs "+args.reference_session+" -d "+args.source_directory, shell=True)
