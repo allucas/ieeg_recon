@@ -86,5 +86,5 @@ python ieeg_recon.py -d Desktop/BIDS/ -s sub-RID0031 -rs ses-research3T -cs ses-
 - `mni`: specifies to run an additional MNI registration in module 3 for visualization purposes
 - `r`: specifies the radius (in mm) of the electrode spheres used to assign regions to each electrode coordinate
 
-
+NOTE: For now, the only flexibility in the naming convention for the BIDS directory specified above is the subject ID and the session names, please keep rest of the naming stems as specified above. Future updates will make things more flexible!
 
