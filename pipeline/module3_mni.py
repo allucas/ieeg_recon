@@ -50,9 +50,15 @@ mod2_folder = os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'modul
 mod3_folder = os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'module3','MNI')
 
 # Define the SelectFiles
-templates= {
-'mri_coords': '{subject}_{session}_space-T00mri_desc-vox_electrodes.txt',
-'preimplant_mri_ras': 'MRI_RAS/{subject}_{session_reference}_acq-3D_space-T00mri_T1w.nii.gz'}
+print(os.path.exists(os.path.join(mod2_folder,'MRI_RAS', subject+'_'+args.reference_session+'_acq-3D_space-T00mri_T1w.nii.gz')))
+if os.path.exists(os.path.join(mod2_folder,'MRI_RAS', subject+'_'+args.reference_session+'_acq-3D_space-T00mri_T1w.nii.gz')):
+    templates= {
+    'mri_coords': '{subject}_{session}_space-T00mri_desc-vox_electrodes.txt',
+    'preimplant_mri_ras': 'MRI_RAS/{subject}_{session_reference}_acq-3D_space-T00mri_T1w.nii.gz'}
+else:
+    templates= {
+    'mri_coords': '{subject}_{session}_space-T00mri_desc-vox_electrodes.txt',
+    'preimplant_mri_ras': '{subject}_{session_reference}_acq-3D_space-T00mri_T1w_ras.nii.gz'}
 
 sf = Node(SelectFiles(templates),
             name='selectfiles')
@@ -409,8 +415,12 @@ command = 'find . -empty -type d -delete'
 os.system(command)
 
 # Rename some of the final files
-os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_electrode_spheres.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w_electrode_spheres.nii.gz')
-os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w.nii.gz')
+try:
+    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_electrode_spheres.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w_electrode_spheres.nii.gz')
+    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w.nii.gz')
+except:
+    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_electrode_spheres.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w_electrode_spheres.nii.gz')
+    os.rename(subject+'_'+session+'_acq-3D_space-T00mri_T1w_ras_flirt.nii.gz', subject+'_'+session+'_acq-3D_space-MNI152NLin2009cAsym_T1w.nii.gz')
 
 
 # Generate an svg to visualize

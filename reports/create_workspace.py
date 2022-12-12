@@ -27,14 +27,17 @@ clinical_session = args.clinical_session
 # We need quotes around all file paths for the workspace file
 module2_path = os.path.join(source_dir,subject,'derivatives','ieeg_recon', 'module2')
 
-if os.path.exists(os.path.join(module2_path,'MRI_RAS')):
+if os.path.exists(os.path.join(module2_path,'MRI_RAS',subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w.nii.gz')):
     mri_path = '"'+os.path.join(module2_path,'MRI_RAS',subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w.nii.gz')+'"'
 else:
     mri_path = '"'+os.path.join(module2_path,subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_ras.nii.gz')+'"'
 
 spheres_labels = '"'+os.path.join(module2_path,subject+'_'+clinical_session+'_space-T01ct_desc-vox_electrodes_itk_snap_labels.txt')+'"'
 
-spheres_path = '"'+os.path.join(module2_path,subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_electrode_spheres.nii.gz')+'"'
+if os.path.exists(os.path.join(module2_path,'MRI_RAS',subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w.nii.gz')):
+  spheres_path = '"'+os.path.join(module2_path,subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_electrode_spheres.nii.gz')+'"'
+else:
+  spheres_path = '"'+os.path.join(module2_path,subject+'_'+reference_session+'_acq-3D_space-T00mri_T1w_ras_electrode_spheres.nii.gz')+'"'
 
 ct_path = '"'+os.path.join(module2_path,subject+'_'+clinical_session+'_acq-3D_space-T00mri_ct_thresholded.nii.gz')+'"'
 
