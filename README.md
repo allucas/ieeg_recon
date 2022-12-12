@@ -116,7 +116,7 @@ Pull the singularity image for `ieeg_recon` into the current directory:
 singularity pull docker://lucasalf11/ieeg_recon
 ```
 
-To execute the same procedure as above but in Docker, the following command would be used:
+To execute the same procedure as above but in Singularity, the following command would be used:
 
 ```
 singularity run -B Desktop/BIDS/:/source_data main_pipeline -s sub-RID0031 -d /source_data -cs ses-clinical01 -rs ses-research3T -gc -m -1 -apn -r 2
