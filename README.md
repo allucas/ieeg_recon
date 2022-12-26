@@ -101,7 +101,7 @@ docker pull lucasalf11/ieeg_recon
 To execute the same procedure as above but in Docker, the following command would be used:
 
 ```
-docker run -v Desktop/BIDS/:/source_data main_pipeline -s sub-RID0031 -d /source_data -cs ses-clinical01 -rs ses-research3T -gc -m -1 -apn -r 2
+docker run -v Desktop/BIDS/:/source_data lucasalf11/ieeg_recon -s sub-RID0031 -d /source_data -cs ses-clinical01 -rs ses-research3T -gc -m -1 -apn -r 2
 ```
 
 The `-d` flag now points to a directory inside the container called `source_data`, this directory was created for the purpose of mounting the BIDS directory from the local machine with the `-v` flag, as shown above.
@@ -119,7 +119,7 @@ singularity pull docker://lucasalf11/ieeg_recon
 To execute the same procedure as above but in Singularity, the following command would be used:
 
 ```
-singularity run -B Desktop/BIDS/:/source_data main_pipeline -s sub-RID0031 -d /source_data -cs ses-clinical01 -rs ses-research3T -gc -m -1 -apn -r 2
+singularity run -B Desktop/BIDS/:/source_data lucasalf11/ieeg_recon -s sub-RID0031 -d /source_data -cs ses-clinical01 -rs ses-research3T -gc -m -1 -apn -r 2
 ```
 
 This is identical to the Docker command, but the mount flag `-v` is replaced by `-B`
